@@ -514,6 +514,38 @@ SENSOR_TYPES: Final[tuple[MieleSensorDefinition, ...]] = (
             MieleAppliance.STEAM_OVEN_COMBI,
             MieleAppliance.STEAM_OVEN_MICRO,
             MieleAppliance.DIALOG_OVEN,
+            MieleAppliance.ROBOT_VACUUM_CLEANER,
+            MieleAppliance.STEAM_OVEN_MK2,
+        ],
+        description=MieleSensorDescription(
+            key="stateRemainingTimeAbsTs",
+            data_tag="state|remainingTime|0",
+            data_tag1="state|remainingTime|1",
+            # also account for time until start in finish time (delayed start)
+            data_tag2="state|startTime|0",
+            data_tag3="state|startTime|1",
+            translation_key="finish_at",
+            icon="mdi:clock-end",
+            device_class=SensorDeviceClass.TIMESTAMP,
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+    ),
+    MieleSensorDefinition(
+        types=[
+            MieleAppliance.WASHING_MACHINE,
+            MieleAppliance.WASHING_MACHINE_SEMI_PROFESSIONAL,
+            MieleAppliance.TUMBLE_DRYER,
+            MieleAppliance.TUMBLE_DRYER_SEMI_PROFESSIONAL,
+            MieleAppliance.DISHWASHER,
+            MieleAppliance.DISH_WARMER,
+            MieleAppliance.OVEN,
+            MieleAppliance.OVEN_MICROWAVE,
+            MieleAppliance.STEAM_OVEN,
+            MieleAppliance.MICROWAVE,
+            MieleAppliance.WASHER_DRYER,
+            MieleAppliance.STEAM_OVEN_COMBI,
+            MieleAppliance.STEAM_OVEN_MICRO,
+            MieleAppliance.DIALOG_OVEN,
             MieleAppliance.STEAM_OVEN_MK2,
         ],
         description=MieleSensorDescription(
@@ -550,6 +582,34 @@ SENSOR_TYPES: Final[tuple[MieleSensorDefinition, ...]] = (
             data_tag1="state|startTime|1",
             translation_key="start_at",
             icon="mdi:calendar-clock",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+    ),
+    MieleSensorDefinition(
+        types=[
+            MieleAppliance.WASHING_MACHINE,
+            MieleAppliance.WASHING_MACHINE_SEMI_PROFESSIONAL,
+            MieleAppliance.TUMBLE_DRYER,
+            MieleAppliance.TUMBLE_DRYER_SEMI_PROFESSIONAL,
+            MieleAppliance.DISHWASHER,
+            MieleAppliance.DISH_WARMER,
+            MieleAppliance.OVEN,
+            MieleAppliance.OVEN_MICROWAVE,
+            MieleAppliance.STEAM_OVEN,
+            MieleAppliance.MICROWAVE,
+            MieleAppliance.WASHER_DRYER,
+            MieleAppliance.STEAM_OVEN_COMBI,
+            MieleAppliance.STEAM_OVEN_MICRO,
+            MieleAppliance.DIALOG_OVEN,
+            MieleAppliance.STEAM_OVEN_MK2,
+        ],
+        description=MieleSensorDescription(
+            key="stateStartTimeAbsTs",
+            data_tag="state|startTime|0",
+            data_tag1="state|startTime|1",
+            translation_key="start_at",
+            icon="mdi:calendar-clock",
+            device_class=SensorDeviceClass.TIMESTAMP,
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
     ),
@@ -601,6 +661,32 @@ SENSOR_TYPES: Final[tuple[MieleSensorDefinition, ...]] = (
             data_tag1="state|elapsedTime|1",
             translation_key="started_at",
             icon="mdi:clock-start",
+            entity_category=EntityCategory.DIAGNOSTIC,
+        ),
+    ),
+    MieleSensorDefinition(
+        types=[
+            MieleAppliance.WASHING_MACHINE,
+            MieleAppliance.TUMBLE_DRYER,
+            MieleAppliance.DISHWASHER,
+            MieleAppliance.OVEN,
+            MieleAppliance.OVEN_MICROWAVE,
+            MieleAppliance.STEAM_OVEN,
+            MieleAppliance.MICROWAVE,
+            MieleAppliance.WASHER_DRYER,
+            MieleAppliance.STEAM_OVEN_COMBI,
+            MieleAppliance.STEAM_OVEN_MICRO,
+            MieleAppliance.DIALOG_OVEN,
+            MieleAppliance.ROBOT_VACUUM_CLEANER,
+            MieleAppliance.STEAM_OVEN_MK2,
+        ],
+        description=MieleSensorDescription(
+            key="stateElapsedTimeAbsTs",
+            data_tag="state|elapsedTime|0",
+            data_tag1="state|elapsedTime|1",
+            translation_key="started_at",
+            icon="mdi:clock-start",
+            device_class=SensorDeviceClass.TIMESTAMP,
             entity_category=EntityCategory.DIAGNOSTIC,
         ),
     ),
@@ -811,9 +897,20 @@ class MieleSensor(MieleEntity, SensorEntity):
             return self._get_absolute_time()
 
         if self.entity_description.key in [
-            "stateElapsedTimeAbs",
+            "stateRemainingTimeAbsTs",
+            "stateStartTimeAbsTs",
         ]:
-            started_time = self._get_absolute_time(sub=True)
+            return self._get_absolute_timestamp()
+
+        if self.entity_description.key in [
+            "stateElapsedTimeAbs",
+            "stateElapsedTimeAbsTs",
+        ]:
+            started_time = (
+                self._get_absolute_time(sub=True)
+                if self.entity_description.key == "stateElapsedTimeAbs"
+                else self._get_absolute_timestamp(sub=True)
+            )
             # Don't update sensor if state == program_ended
             if (
                 self.coordinator.data[self._ent][self.entity_description.status_key_raw]
@@ -860,7 +957,9 @@ class MieleSensor(MieleEntity, SensorEntity):
             "stateCurrentEnergyConsumption",
             "stateCurrentWaterConsumption",
         ]:
-            current_consumption = self.coordinator.data[self._ent].get(self.entity_description.data_tag)
+            current_consumption = self.coordinator.data[self._ent].get(
+                self.entity_description.data_tag
+            )
             # Show 0 consumption when the appliance is not running,
             # to correctly reset utility meter cycle. Ignore this when
             # appliance is not connected (it may disconnect while a program
@@ -875,20 +974,30 @@ class MieleSensor(MieleEntity, SensorEntity):
             ]:
                 self._last_consumption_valid = False
                 return 0
-            # If running or paused, instead, mark valid the consumption and 
-            # report it only if it starts from 0, otherwise it results as a 
-            # spike due to a glitch in API that is reporting the consumption 
-            # of last cycle for a couple of seconds immediately after starting 
+            # If running or paused, instead, mark valid the consumption and
+            # report it only if it starts from 0, otherwise it results as a
+            # spike due to a glitch in API that is reporting the consumption
+            # of last cycle for a couple of seconds immediately after starting
             # the program
-            elif state in [
-                STATE_STATUS_RUNNING,
-                STATE_STATUS_PAUSE,
-            ] and current_consumption == 0:
+            elif (
+                state
+                in [
+                    STATE_STATUS_RUNNING,
+                    STATE_STATUS_PAUSE,
+                ]
+                and current_consumption == 0
+            ):
                 self._last_consumption_valid = True
-            elif state in [
-                STATE_STATUS_RUNNING,
-                STATE_STATUS_PAUSE,
-            ] and current_consumption is not None and current_consumption > 0 and not self._last_consumption_valid:
+            elif (
+                state
+                in [
+                    STATE_STATUS_RUNNING,
+                    STATE_STATUS_PAUSE,
+                ]
+                and current_consumption is not None
+                and current_consumption > 0
+                and not self._last_consumption_valid
+            ):
                 return 0
 
         if (
@@ -970,6 +1079,25 @@ class MieleSensor(MieleEntity, SensorEntity):
                 return previous_value.strftime("%H:%M")
         self._last_abs_time[self.entity_description.key] = val
         return formatted
+
+    def _get_absolute_timestamp(self, sub=False):
+        now = dt_util.now()
+        mins = self._get_minutes()
+        if mins == 0:
+            return None
+        if sub:
+            val = now - timedelta(minutes=mins)
+        else:
+            val = now + timedelta(minutes=mins)
+        # check for previous value and return it if differning of +/-90s
+        if self.entity_description.key in self._last_abs_time:
+            previous_value = self._last_abs_time[self.entity_description.key]
+            prev_minute = previous_value - timedelta(seconds=90)
+            next_minute = previous_value + timedelta(seconds=90)
+            if prev_minute <= val <= next_minute:
+                return previous_value.replace(second=0, microsecond=0)
+        self._last_abs_time[self.entity_description.key] = val
+        return val.replace(second=0, microsecond=0)
 
     @property
     def available(self):
