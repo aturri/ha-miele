@@ -528,6 +528,7 @@ SENSOR_TYPES: Final[tuple[MieleSensorDefinition, ...]] = (
             icon="mdi:clock-end",
             device_class=SensorDeviceClass.TIMESTAMP,
             entity_category=EntityCategory.DIAGNOSTIC,
+            entity_registry_enabled_default=False,
         ),
     ),
     MieleSensorDefinition(
@@ -611,6 +612,7 @@ SENSOR_TYPES: Final[tuple[MieleSensorDefinition, ...]] = (
             icon="mdi:calendar-clock",
             device_class=SensorDeviceClass.TIMESTAMP,
             entity_category=EntityCategory.DIAGNOSTIC,
+            entity_registry_enabled_default=False,
         ),
     ),
     MieleSensorDefinition(
@@ -688,6 +690,7 @@ SENSOR_TYPES: Final[tuple[MieleSensorDefinition, ...]] = (
             icon="mdi:clock-start",
             device_class=SensorDeviceClass.TIMESTAMP,
             entity_category=EntityCategory.DIAGNOSTIC,
+            entity_registry_enabled_default=False,
         ),
     ),
     MieleSensorDefinition(
